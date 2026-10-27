@@ -60,21 +60,31 @@ Para testar localmente com a Meta real, exponha a porta com um túnel HTTPS (ex.
 
 ## Deploy na VPS com Docker
 
-O `docker-compose.yml` sobe dois containers: o **app** (porta 3000, fechada para a internet) e o **Caddy**, que recebe nas portas 80/443 e emite o certificado HTTPS sozinho (Let's Encrypt). O banco fica no volume `app-data`.
+O `docker-compose.yml` sobe o **app** publicado só em `127.0.0.1:3010` (fechado para a internet). Na frente fica o **Nginx da VPS**, que recebe nas portas 80/443, com certificado HTTPS do Let's Encrypt emitido pelo **Certbot**. O banco fica no volume `app-data`.
 
-**Pré-requisitos:** VPS com Docker + Compose (`curl -fsSL https://get.docker.com | sh`), portas 80 e 443 livres e abertas no firewall, e um registro DNS **A** do domínio apontando para o IP da VPS.
+**Pré-requisitos:** VPS com Docker + Compose (`curl -fsSL https://get.docker.com | sh`), Nginx e Certbot (`sudo apt install -y nginx certbot python3-certbot-nginx`), portas 80 e 443 abertas no firewall, e um registro DNS **A** de `directflow.codeshot.com.br` apontando para o IP da VPS.
 
 ```bash
-# no seu computador: enviar o projeto
-scp linka-direct.zip usuario@IP-DA-VPS:~
+# no seu computador: enviar o projeto (sem .git, .env e banco local)
+git archive --format=tar.gz -o directflow.tar.gz HEAD
+scp directflow.tar.gz usuario@IP-DA-VPS:~
+
 # na VPS
-unzip linka-direct.zip && cd insta-direct
-cp .env.example .env && nano .env      # DOMAIN, APP_BASE_URL e o resto
+mkdir -p ~/directflow && tar -xzf directflow.tar.gz -C ~/directflow && cd ~/directflow
+cp .env.example .env && nano .env      # APP_BASE_URL e o resto
 docker compose up -d --build
-docker compose logs -f app             # deve mostrar "rodando em https://..."
+curl -s http://127.0.0.1:3010/healthz  # {"ok":true}
+
+# Nginx + HTTPS
+sudo cp deploy/nginx-directflow.conf /etc/nginx/sites-available/directflow
+sudo ln -s /etc/nginx/sites-available/directflow /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+sudo certbot --nginx -d directflow.codeshot.com.br   # escolha redirecionar HTTP -> HTTPS
 ```
 
-Abra `https://SEU-DOMINIO`. Na Meta, use `https://SEU-DOMINIO/webhook` e `https://SEU-DOMINIO/auth/instagram/callback`.
+O Certbot instala um timer que renova o certificado sozinho (teste com `sudo certbot renew --dry-run`).
+
+Abra `https://directflow.codeshot.com.br`. Na Meta, use `https://directflow.codeshot.com.br/webhook` e `https://directflow.codeshot.com.br/auth/instagram/callback`.
 
 | Tarefa | Comando |
 |---|---|
@@ -87,10 +97,8 @@ Abra `https://SEU-DOMINIO`. Na Meta, use `https://SEU-DOMINIO/webhook` e `https:
 
 Backup diário automático (crontab da VPS, `crontab -e`):
 ```
-15 3 * * * cd ~/insta-direct && docker compose exec -T app node scripts/backup.js && docker compose cp app:/app/data/backups ./backups
+15 3 * * * cd ~/directflow && docker compose exec -T app node scripts/backup.js && docker compose cp app:/app/data/backups ./backups
 ```
-
-**Já tem Nginx/Traefik na porta 443?** Remova o serviço `caddy` do compose, troque `expose` por `ports: ["127.0.0.1:3000:3000"]` no `app` e aponte seu proxy para `http://127.0.0.1:3000` (repassando o header `X-Forwarded-For`).
 
 > `docker compose down -v` **apaga** os volumes, inclusive o banco. Não use o `-v` a menos que queira zerar tudo.
 

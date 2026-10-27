@@ -109,7 +109,7 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
 
     // ===== Login do painel =====
     if (pathname === '/api/login' && m === 'POST') {
-      // Atrás do proxy reverso (Caddy), o IP real vem no X-Forwarded-For.
+      // Atrás do proxy reverso (Nginx), o IP real vem no X-Forwarded-For.
       const fwd = cfg.trustProxy && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
       const ip = fwd || req.socket.remoteAddress || '?';
       if (!loginLimiter(ip)) throw new HttpError(429, 'Muitas tentativas. Aguarde 15 minutos.');
