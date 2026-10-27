@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Linka · Automação de Direct</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<svg class="sprite" aria-hidden="true">
+  <symbol id="i-mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M9 9h9.5a4.5 4.5 0 0 1 4.5 4.5V16h-6.5v7H9z" fill="#fff"/><path d="M19.5 18.5H23V23h-3.5z" fill="#fff"/></symbol>
+  <symbol id="i-mark-inv" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#fff"/><path d="M9 9h9.5a4.5 4.5 0 0 1 4.5 4.5V16h-6.5v7H9z" fill="#ff4b2b"/><path d="M19.5 18.5H23V23h-3.5z" fill="#ff4b2b"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-retry" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Linka — início"><svg><use href="#i-mark"/></svg>LINKA</a>
+    <nav class="nav-links" aria-label="Seções">
+      <a href="#automacoes">Automações</a>
+      <a href="#historico">Histórico</a>
+      <a href="#conta">Conta</a>
+    </nav>
+    <div id="nav-account"></div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <svg class="hero-art" viewBox="0 0 640 520" aria-hidden="true">
+      <g fill="none" stroke="var(--accent)">
+        <path d="M-40 250 C 120 150, 250 70, 360 30" stroke-width="3"/>
+        <path d="M-40 290 C 120 180, 250 90, 360 50" stroke-width="2"/>
+        <path d="M440 30 C 520 70, 600 130, 700 230" stroke-width="3"/>
+        <path d="M440 50 C 520 90, 600 150, 700 260" stroke-width="2"/>
+        <g stroke-width="1.4" opacity=".9">
+          <path d="M20 205 V520M60 180 V520M100 155 V520M140 132 V520M180 112 V520M220 93 V520M260 76 V520M300 60 V520M330 48 V520"/>
+          <path d="M470 45 V520M500 60 V520M530 76 V520M560 96 V520M590 118 V520M620 142 V520"/>
+        </g>
+      </g>
+      <g fill="var(--accent)">
+        <rect x="352" y="0" width="22" height="520"/><rect x="426" y="0" width="22" height="520"/>
+        <rect x="352" y="40" width="96" height="14"/><rect x="352" y="140" width="96" height="16"/>
+        <rect x="352" y="250" width="96" height="18"/><rect x="352" y="370" width="96" height="20"/>
+        <rect x="366" y="60" width="6" height="74" opacity=".55"/><rect x="428" y="60" width="6" height="74" opacity=".55"/>
+        <rect x="366" y="162" width="6" height="82" opacity=".55"/><rect x="428" y="162" width="6" height="82" opacity=".55"/>
+      </g>
+    </svg>
+
+    <div class="wrap">
+      <h1>Comentou,<span>recebeu.</span></h1>
+      <div id="banner"></div>
+
+      <div class="hero-grid">
+        <div>
+          <div class="stat-big" id="hero-stat">—</div>
+          <div class="stat-cap" id="hero-cap">DMs enviadas nos últimos 14 dias.</div>
+        </div>
+
+        <div class="card-red" id="hero-card">
+          <svg class="mark"><use href="#i-mark-inv"/></svg>
+          <h2 id="hero-card-title">Toda palavra-chave vira uma conversa.</h2>
+          <p id="hero-card-text">Escolha um post ou Reels, defina a palavra (ex.: QUERO) e o link. Quem comentar recebe a DM na hora.</p>
+          <a class="badge-round" id="hero-cta" href="#" aria-label="Nova automação">
+            <svg class="ring" viewBox="0 0 100 100" aria-hidden="true">
+              <defs><path id="circle" d="M50,50 m-37,0 a37,37 0 1,1 74,0 a37,37 0 1,1 -74,0"/></defs>
+              <text><textPath href="#circle" id="hero-cta-text" textLength="226" lengthAdjust="spacing">NOVA AUTOMAÇÃO • NOVA AUTOMAÇÃO • </textPath></text>
+            </svg>
+            <svg class="arrow"><use href="#i-arrow"/></svg>
+          </a>
+        </div>
+
+        <div class="profile-card" id="conta"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap" id="dashboard">
+    <div class="numbered">
+      <div><div class="n">01</div><h3><b id="k-active">0</b> <span id="k-active-label">automações ativas</span></h3><p>Cada publicação tem sua palavra-chave, mensagem e link.</p></div>
+      <div><div class="n">02</div><h3><b id="k-hour">0</b> DMs na última hora</h3><p id="k-hour-cap">A Meta permite até 750 respostas privadas por hora. O excedente entra na fila.</p></div>
+      <div><div class="n">03</div><h3><b id="k-failed">0</b> <span id="k-failed-label">falhas</span> em 14 dias</h3><p>Erros temporários são reenviados sozinhos por até 7 dias após o comentário.</p></div>
+    </div>
+
+    <div class="chart" id="chart" role="img" aria-label="DMs enviadas por dia"><span class="chart-label">DMs por dia</span></div>
+    <div class="chart-days" id="chart-days"></div>
+
+    <section class="section" id="automacoes">
+      <div class="section-head">
+        <h2><span class="n">Automações</span>Seus gatilhos</h2>
+        <button class="btn accent" id="btn-new" type="button">+ Nova automação</button>
+      </div>
+      <div class="list" id="auto-list"></div>
+    </section>
+
+    <section class="section" id="historico">
+      <div class="section-head">
+        <h2><span class="n">Histórico</span>Comentários processados</h2>
+        <div class="filters" id="filters" role="group" aria-label="Filtrar por status">
+          <button class="filter" data-s="" aria-pressed="true">Todos</button>
+          <button class="filter" data-s="sent" aria-pressed="false">Enviadas</button>
+          <button class="filter" data-s="queued" aria-pressed="false">Na fila</button>
+          <button class="filter" data-s="failed" aria-pressed="false">Falhas</button>
+          <button class="filter" data-s="ignored" aria-pressed="false">Ignorados</button>
+        </div>
+      </div>
+      <div class="list" id="events"></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="modal" aria-labelledby="modal-title">
+  <form class="modal" id="auto-form" method="dialog" novalidate>
+    <div class="modal-main">
+      <h3 id="modal-title">Nova automação</h3>
+      <p class="lead">Quem comentar a palavra-chave nesta publicação recebe uma DM com o link.</p>
+
+      <div class="field" id="media-field">
+        <span>Publicação ou Reels <em id="media-count"></em></span>
+        <div class="media-grid" id="media-grid"></div>
+        <div class="more hidden" id="media-more-wrap"><button type="button" class="btn ghost small" id="media-more">Carregar mais</button></div>
+      </div>
+      <div class="field hidden" id="media-selected"></div>
+
+      <label class="field">
+        <span>Palavra-chave <em>separe variações por vírgula</em></span>
+        <input class="input kw-input" name="keyword" maxlength="100" placeholder="QUERO" required autocomplete="off">
+        <div class="hint">Não diferencia maiúsculas nem acentos. Precisa ser a palavra inteira: “quero!” conta, “queroo” não.</div>
+      </label>
+      <label class="field">
+        <span>Mensagem <em id="msg-count">0/1000</em></span>
+        <textarea class="input" name="message" maxlength="900" required placeholder="Oi {username}! Aqui está o link que você pediu 👇"></textarea>
+        <div class="hint">Use <b>{username}</b> para mencionar a pessoa. O link vai no final.</div>
+      </label>
+      <label class="field">
+        <span>Link do produto</span>
+        <input class="input" name="link" type="url" inputmode="url" placeholder="https://sualoja.com/produto" required>
+      </label>
+    </div>
+
+    <aside class="modal-side">
+      <p class="side-note"><b>Como chega:</b> se a pessoa segue você, na caixa principal; senão, em Solicitações. A Meta permite <b>uma</b> resposta privada por comentário, até 7 dias depois.</p>
+      <div class="phone" aria-label="Prévia da DM">
+        <div class="phone-head"><span class="avatar" id="pv-avatar">L</span><span id="pv-user">sua conta</span></div>
+        <div class="phone-body">
+          <div class="bubble them" id="pv-comment">Comentou “QUERO” no seu post</div>
+          <div class="bubble me" id="pv-msg"></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" type="button" id="btn-cancel">Cancelar</button>
+        <button class="btn accent" type="submit" id="btn-save">Salvar automação</button>
+      </div>
+    </aside>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

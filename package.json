@@ -1,0 +1,13 @@
+{
+  "name": "linka-direct",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Automação de DM no Instagram a partir de palavra-chave em comentários (API oficial da Meta)",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/index.js",
+    "dev": "node --watch --disable-warning=ExperimentalWarning --env-file-if-exists=.env src/index.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  }
+}

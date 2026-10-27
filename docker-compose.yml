@@ -1,0 +1,44 @@
+# App + Caddy (HTTPS automático com Let's Encrypt).
+# Uso: docker compose up -d --build
+services:
+  app:
+    build: .
+    image: linka-direct:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_PATH: /app/data/app.db
+      TRUST_PROXY: "1"
+    volumes:
+      - app-data:/app/data
+    expose:
+      - "3000"          # só acessível pelo Caddy, não pela internet
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Defina DOMAIN no arquivo .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data        # certificados
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  app-data:
+  caddy-data:
+  caddy-config:

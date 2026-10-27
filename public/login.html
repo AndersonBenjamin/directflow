@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar · Linka</title>
+  <link rel="icon" href="/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="login">
+  <div class="login-art">
+    <svg class="cables" viewBox="0 0 520 520" aria-hidden="true" fill="none" stroke="#fff">
+      <path d="M0 260 C 140 160, 240 80, 300 40" stroke-width="3"/><path d="M380 40 C 440 80, 480 140, 560 240" stroke-width="3"/>
+      <path d="M40 232V520M90 198V520M140 166V520M190 136V520M240 104V520M420 64V520M470 106V520" stroke-width="1.5"/>
+      <g fill="#fff" stroke="none"><rect x="296" y="0" width="20" height="520"/><rect x="364" y="0" width="20" height="520"/><rect x="296" y="60" width="88" height="14"/><rect x="296" y="200" width="88" height="16"/><rect x="296" y="360" width="88" height="18"/></g>
+    </svg>
+    <a class="logo" href="/login.html"><svg><use href="/logo.svg#mark-inv"/></svg>LINKA</a>
+    <h1>Comentou,<br>recebeu.</h1>
+  </div>
+  <div class="login-form">
+    <form id="f">
+      <h2>Entrar no painel</h2>
+      <p class="muted">Use a senha de administrador definida no servidor.</p>
+      <label class="field"><span>Senha</span><input class="input" type="password" name="password" autocomplete="current-password" required autofocus></label>
+      <button class="btn accent" type="submit" id="go">Entrar</button>
+      <p class="hint" id="err" role="alert"></p>
+    </form>
+  </div>
+</div>
+<script src="/login.js" type="module"></script>
+</body>
+</html>

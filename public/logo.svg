@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <symbol id="mark-inv" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#fff"/><path d="M9 9h9.5a4.5 4.5 0 0 1 4.5 4.5V16h-6.5v7H9z" fill="#ff4b2b"/><path d="M19.5 18.5H23V23h-3.5z" fill="#ff4b2b"/></symbol>
+  <rect width="32" height="32" rx="7" fill="#ff4b2b"/>
+  <path d="M9 9h9.5a4.5 4.5 0 0 1 4.5 4.5V16h-6.5v7H9z" fill="#fff"/>
+  <path d="M19.5 18.5H23V23h-3.5z" fill="#fff"/>
+</svg>

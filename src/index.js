@@ -1,0 +1,48 @@
+import { loadConfig } from './config.js';
+import { openDb } from './db.js';
+import { makeGraph } from './graph.js';
+import { makeCipher } from './security.js';
+import { makeWorker, refreshTokens } from './automation.js';
+import { createServer } from './server.js';
+
+const log = (...a) => console.log(new Date().toISOString(), ...a);
+
+export function start(overrides = {}) {
+  const cfg = { ...loadConfig(), ...overrides };
+  const repo = openDb(cfg.dbPath);
+  const graph = makeGraph(cfg);
+  const cipher = makeCipher(cfg.encryptionKey);
+  const worker = makeWorker({ repo, graph, cipher, cfg, log });
+  const server = createServer({ cfg, repo, graph, cipher, worker, log });
+
+  repo.resetStuckSending();
+  const timers = [
+    setInterval(() => worker.tick().catch((e) => log('worker:', e.message)), cfg.workerIntervalMs),
+    setInterval(() => refreshTokens({ repo, graph, cipher, log }).catch(() => {}), 6 * 3600_000),
+    setInterval(() => { const n = repo.purgeOlderThan(cfg.historyRetentionDays); if (n) log(`histórico: ${n} eventos antigos removidos`); }, 24 * 3600_000),
+  ];
+  refreshTokens({ repo, graph, cipher, log }).catch(() => {});
+
+  return new Promise((resolve) => {
+    server.listen(cfg.port, () => {
+      log(`rodando em ${cfg.baseUrl} (porta ${cfg.port}) · Graph API ${cfg.graphVersion}`);
+      resolve({
+        server, repo, cfg, worker,
+        close: () => new Promise((r) => { timers.forEach(clearInterval); server.close(() => { repo.raw.close(); r(); }); }),
+      });
+    });
+  });
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const app = start().catch((e) => { console.error(e.message); process.exit(1); });
+  // Encerramento limpo (docker stop envia SIGTERM): para de aceitar conexões e fecha o banco.
+  for (const sig of ['SIGINT', 'SIGTERM']) {
+    process.on(sig, async () => {
+      log(`${sig} recebido, encerrando…`);
+      setTimeout(() => process.exit(0), 8000).unref();
+      await (await app)?.close();
+      process.exit(0);
+    });
+  }
+}
