@@ -20,9 +20,11 @@
   </div>
   <div class="login-form">
     <form id="f">
-      <h2>Entrar no painel</h2>
-      <p class="muted">Use a senha de administrador definida no servidor.</p>
-      <label class="field"><span>Senha</span><input class="input" type="password" name="password" autocomplete="current-password" required autofocus></label>
+      <h2 id="title">Entrar no painel</h2>
+      <p class="muted" id="lead">Use a senha de administrador do painel.</p>
+      <label class="field hidden" id="code-field"><span>Código de configuração</span><input class="input" name="code" autocomplete="off" spellcheck="false">
+        <span class="hint">Aparece no log do servidor: <code>docker compose logs app</code></span></label>
+      <label class="field"><span id="pw-label">Senha</span><input class="input" type="password" name="password" autocomplete="current-password" required autofocus></label>
       <button class="btn accent" type="submit" id="go">Entrar</button>
       <p class="hint" id="err" role="alert"></p>
     </form>

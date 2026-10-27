@@ -42,28 +42,35 @@ const keywords = (s) => String(s || '').split(',').map((k) => k.trim().toUpperCa
 const mediaThumb = (m) => m.thumbnail_url || m.media_url || '';
 const mediaLabel = (t) => ({ REELS: 'REELS', FEED: 'POST', STORY: 'STORY' }[t] || t || '');
 
-const state = { account: null, automations: [], filter: '', events: [], media: [], mediaNext: null, editing: null, selectedMedia: null };
+const state = { account: null, metaReady: false, automations: [], filter: '', events: [], media: [], mediaNext: null, editing: null, selectedMedia: null };
 
 // ---------------- conta ----------------
 function renderAccount() {
   const a = state.account;
   const nav = $('#nav-account');
   const card = $('#conta');
+  const banner = $('#banner');
   nav.replaceChildren();
   card.replaceChildren();
+  banner.replaceChildren();
 
   if (!a) {
-    nav.append(h('a', { class: 'btn', href: '/auth/instagram/start' }, 'Conectar Instagram'));
+    // Sem App ID/Secret o login do Instagram não funciona: manda para Configurações.
+    const connect = state.metaReady ? '/auth/instagram/start' : '#configuracoes';
+    if (!state.metaReady) banner.append(h('div', { class: 'banner' },
+      h('span', {}, 'Antes de conectar o Instagram, preencha o App ID e o App Secret da Meta.'),
+      h('a', { class: 'btn small accent', href: '#configuracoes' }, 'Configurar')));
+    nav.append(h('a', { class: 'btn', href: connect }, 'Conectar Instagram'));
     $('#hero-card-title').textContent = 'Conecte sua conta profissional para começar.';
     $('#hero-card-text').textContent = 'Usamos o login oficial do Instagram (Meta). A conta precisa ser Comercial ou Criador e estar pública.';
-    $('#hero-cta').href = '/auth/instagram/start';
+    $('#hero-cta').href = connect;
     $('#hero-cta').setAttribute('aria-label', 'Conectar Instagram');
     $('#hero-cta-text').textContent = 'CONECTAR CONTA • CONECTAR CONTA • ';
     $('#dashboard').classList.add('hidden');
     card.append(
       h('div', { class: 'profile-photo' }, h('span', { class: 'ph' }, '@')),
       h('div', { class: 'profile-meta' }, h('div', {}, h('strong', {}, 'Nenhuma conta'), h('small', {}, 'Instagram profissional')),
-        h('a', { href: '/auth/instagram/start', 'aria-label': 'Conectar' }, icon('i-arrow'))),
+        h('a', { href: connect, 'aria-label': 'Conectar' }, icon('i-arrow'))),
     );
     return;
   }
@@ -87,8 +94,6 @@ function renderAccount() {
       h('a', { href: `https://www.instagram.com/${encodeURIComponent(a.username)}/`, target: '_blank', rel: 'noopener noreferrer', title: 'Abrir perfil', 'aria-label': 'Abrir perfil no Instagram' }, icon('i-arrow'))),
   );
 
-  const banner = $('#banner');
-  banner.replaceChildren();
   if (!ok) banner.append(h('div', { class: 'banner' },
     h('span', {}, `A conexão com o Instagram precisa ser renovada. ${a.status_detail || ''}`),
     h('a', { class: 'btn small accent', href: '/auth/instagram/start' }, 'Reconectar')));
@@ -315,6 +320,63 @@ $('#filters').addEventListener('click', (e) => {
   loadEvents().catch((err) => toast(err.message, true));
 });
 
+// ---------------- configurações ----------------
+const metaForm = $('#meta-form');
+const pwForm = $('#pw-form');
+
+function renderSettings(s) {
+  metaForm.igAppId.value = s.igAppId || '';
+  metaForm.igAppSecret.value = '';
+  metaForm.igAppSecret.placeholder = s.igAppSecretSet ? '•••••••• (salvo, deixe vazio para manter)' : '';
+  $('#secret-state').textContent = s.igAppSecretSet ? 'salvo ✓' : 'pendente';
+  metaForm.webhookVerifyToken.value = s.webhookVerifyToken || '';
+  for (const k of ['igAppId', 'igAppSecret', 'webhookVerifyToken']) {
+    metaForm[k].disabled = s.locked[k];
+    metaForm[k].title = s.locked[k] ? 'Definido no .env do servidor' : '';
+  }
+  $('#meta-save').disabled = s.locked.igAppId && s.locked.igAppSecret && s.locked.webhookVerifyToken;
+  $('#url-webhook').value = s.urls.webhook;
+  $('#url-callback').value = s.urls.callback;
+  $('#url-privacy').value = s.urls.privacy;
+  $('#pw-locked').classList.toggle('hidden', !s.locked.password);
+  $('#pw-fields').classList.toggle('hidden', s.locked.password);
+}
+
+async function loadSettings() { renderSettings(await api('/api/settings')); }
+
+metaForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {};
+  for (const k of ['igAppId', 'igAppSecret', 'webhookVerifyToken']) if (!metaForm[k].disabled) body[k] = metaForm[k].value.trim();
+  const btn = $('#meta-save');
+  btn.disabled = true;
+  try {
+    renderSettings(await api('/api/settings', { method: 'PUT', body }));
+    toast('Configurações salvas');
+    await boot();
+  } catch (err) { toast(err.message, true); }
+  finally { btn.disabled = false; }
+});
+
+pwForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (pwForm.password.value.length < 10) return toast('A nova senha precisa ter ao menos 10 caracteres', true), pwForm.password.focus();
+  const btn = $('#pw-save');
+  btn.disabled = true;
+  try {
+    await api('/api/password', { method: 'POST', body: { current: pwForm.current.value, password: pwForm.password.value } });
+    pwForm.reset();
+    toast('Senha alterada');
+  } catch (err) { toast(err.message, true); }
+  finally { btn.disabled = false; }
+});
+
+// Clicar numa URL seleciona e copia.
+document.querySelectorAll('.input.copy').forEach((el) => el.addEventListener('click', () => {
+  el.select();
+  navigator.clipboard?.writeText(el.value).then(() => toast('Copiado'), () => {});
+}));
+
 // ---------------- inicialização ----------------
 async function refresh() {
   if (!state.account) return;
@@ -322,8 +384,9 @@ async function refresh() {
 }
 
 async function boot() {
-  const { account } = await api('/api/me');
+  const { account, metaReady } = await api('/api/me');
   state.account = account;
+  state.metaReady = metaReady;
   renderAccount();
   await refresh();
 }
@@ -334,4 +397,5 @@ if (params.get('erro')) toast(params.get('erro'), true);
 if (params.toString()) history.replaceState(null, '', '/');
 
 boot().catch((e) => toast(e.message, true));
+loadSettings().catch((e) => toast(e.message, true));
 setInterval(() => { if (!document.hidden && !dialog.open) refresh(); }, 30000);

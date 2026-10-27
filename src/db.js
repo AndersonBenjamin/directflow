@@ -56,6 +56,11 @@ CREATE INDEX IF NOT EXISTS idx_events_queue ON comment_events(status, next_attem
 CREATE INDEX IF NOT EXISTS idx_events_received ON comment_events(received_at);
 CREATE INDEX IF NOT EXISTS idx_events_auto_user ON comment_events(automation_id, from_id, status);
 CREATE INDEX IF NOT EXISTS idx_events_sent ON comment_events(account_id, sent_at);
+
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,                     -- configurações feitas pelo painel
+  value TEXT NOT NULL
+);
 `;
 
 export function openDb(file) {
@@ -76,6 +81,12 @@ function makeRepo(db) {
       db.exec('BEGIN IMMEDIATE');
       try { const r = fn(); db.exec('COMMIT'); return r; }
       catch (e) { db.exec('ROLLBACK'); throw e; }
+    },
+
+    // ---------- configurações ----------
+    getSetting: (key) => q('SELECT value FROM settings WHERE key = ?').get(key)?.value,
+    setSetting(key, value) {
+      q('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').run(key, String(value));
     },
 
     // ---------- contas ----------

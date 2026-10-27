@@ -25,6 +25,21 @@ export function safeEqual(a, b) {
   return crypto.timingSafeEqual(ha, hb);
 }
 
+// ---- Senha do painel (scrypt) ----
+export function hashPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(String(password), salt, 32);
+  return `scrypt$${salt.toString('base64url')}$${hash.toString('base64url')}`;
+}
+
+export function verifyPassword(password, stored) {
+  const [alg, salt, hash] = String(stored || '').split('$');
+  if (alg !== 'scrypt' || !salt || !hash) return false;
+  const got = crypto.scryptSync(String(password), Buffer.from(salt, 'base64url'), 32);
+  const expected = Buffer.from(hash, 'base64url');
+  return got.length === expected.length && crypto.timingSafeEqual(got, expected);
+}
+
 // ---- Assinatura do webhook da Meta (X-Hub-Signature-256) ----
 export function verifyMetaSignature(rawBody, header, appSecret) {
   if (!header || !header.startsWith('sha256=')) return false;

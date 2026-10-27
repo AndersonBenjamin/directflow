@@ -41,9 +41,9 @@ Painel (HTML/JS) ◀──▶ API /api/* (sessão por senha)
 ## Configuração da Meta (passo a passo)
 
 1. Em [developers.facebook.com](https://developers.facebook.com/apps), crie um app do tipo **Empresa** e adicione o produto **Instagram** → *API setup with Instagram login*.
-2. Copie **Instagram App ID** e **Instagram App Secret** para o `.env`.
+2. Copie **Instagram App ID** e **Instagram App Secret** para o painel, em **Configurações** (ou para o `.env`).
 3. Em *Business login settings*, adicione o **OAuth redirect URI**: `https://SEU-DOMINIO/auth/instagram/callback`.
-4. Em *Configure webhooks*: Callback URL `https://SEU-DOMINIO/webhook`, Verify token = `WEBHOOK_VERIFY_TOKEN`. Clique em verificar e **assine o campo `comments`**.
+4. Em *Configure webhooks*: Callback URL `https://SEU-DOMINIO/webhook`, Verify token = o que aparece em **Configurações** (gerado automaticamente). Clique em verificar e **assine o campo `comments`**.
 5. Em *Roles*, adicione sua conta do Instagram como **Instagram Tester** e aceite o convite no app do Instagram (Configurações > Apps e sites).
 6. Na conta do Instagram: profissional, **pública**, e *Configurações > Mensagens > Ferramentas conectadas > Permitir acesso a mensagens* ligado.
 7. Coloque o app em **Live**. Para receber webhooks de `comments` a Meta exige **Advanced Access** → faça Business Verification e App Review das três permissões (use `/privacy` como URL da política).
@@ -51,9 +51,9 @@ Painel (HTML/JS) ◀──▶ API /api/* (sessão por senha)
 ## Rodando
 
 ```bash
-cp .env.example .env        # preencha
+cp .env.example .env        # defina ao menos APP_BASE_URL=http://localhost:3000
 npm start                   # ou npm run dev
-npm test                    # 8 testes ponta a ponta, sem acessar a Meta
+npm test                    # 9 testes ponta a ponta, sem acessar a Meta
 ```
 
 Para testar localmente com a Meta real, exponha a porta com um túnel HTTPS (ex.: `cloudflared tunnel --url http://localhost:3000`) e use essa URL em `APP_BASE_URL`.
@@ -64,14 +64,11 @@ O `docker-compose.yml` sobe o **app** publicado só em `127.0.0.1:3010` (fechado
 
 **Pré-requisitos:** VPS com Docker + Compose (`curl -fsSL https://get.docker.com | sh`), Nginx e Certbot (`sudo apt install -y nginx certbot python3-certbot-nginx`), portas 80 e 443 abertas no firewall, e um registro DNS **A** de `directflow.codeshot.com.br` apontando para o IP da VPS.
 
-```bash
-# no seu computador: enviar o projeto (sem .git, .env e banco local)
-git archive --format=tar.gz -o directflow.tar.gz HEAD
-scp directflow.tar.gz usuario@IP-DA-VPS:~
+O `.env` é **opcional**: sem ele o app sobe com `APP_BASE_URL=https://directflow.codeshot.com.br` e o resto é feito pelo painel.
 
+```bash
 # na VPS
-mkdir -p ~/directflow && tar -xzf directflow.tar.gz -C ~/directflow && cd ~/directflow
-cp .env.example .env && nano .env      # APP_BASE_URL e o resto
+git clone https://github.com/AndersonBenjamin/directflow.git ~/directflow && cd ~/directflow
 docker compose up -d --build
 curl -s http://127.0.0.1:3010/healthz  # {"ok":true}
 
@@ -84,12 +81,18 @@ sudo certbot --nginx -d directflow.codeshot.com.br   # escolha redirecionar HTTP
 
 O Certbot instala um timer que renova o certificado sozinho (teste com `sudo certbot renew --dry-run`).
 
-Abra `https://directflow.codeshot.com.br`. Na Meta, use `https://directflow.codeshot.com.br/webhook` e `https://directflow.codeshot.com.br/auth/instagram/callback`.
+### Primeiro acesso
+
+1. Veja o código de configuração no log: `docker compose logs app | grep "primeiro acesso"`.
+2. Abra `https://directflow.codeshot.com.br`, informe o código e crie a senha do painel.
+3. Em **Configurações**, cole o App ID e o App Secret da Meta quando tiver. Lá também estão as URLs de webhook e de OAuth e o Verify token para colar na Meta.
+
+A chave que criptografa App Secret e tokens é gerada em `/app/data/secret.key` (no volume) e copiada junto com cada backup. Guarde-a com os backups: sem ela, um banco restaurado não decifra os segredos.
 
 | Tarefa | Comando |
 |---|---|
 | Ver logs | `docker compose logs -f app` |
-| Atualizar o código | substituir os arquivos e `docker compose up -d --build` |
+| Atualizar o código | `git pull && docker compose up -d --build` |
 | Reiniciar | `docker compose restart app` |
 | Parar | `docker compose down` (os dados ficam no volume) |
 | Backup do banco | `docker compose exec app node scripts/backup.js` |

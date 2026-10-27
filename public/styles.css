@@ -203,6 +203,16 @@ textarea.input { height: 110px; padding: 10px 12px; resize: vertical; }
 .side-note b { color: var(--ink); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 
+/* ---------- configurações ---------- */
+.settings { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+.panel h3 { margin: 0 0 6px; font-size: 18px; letter-spacing: -.02em; }
+.panel h3:not(:first-child) { margin-top: 28px; }
+.panel > .hint:first-of-type { margin: 0 0 18px; }
+.input:disabled, .input[readonly] { background: var(--bg); color: var(--ink-2); }
+.input.copy { cursor: copy; font-size: 13px; }
+@media (max-width: 760px) { .settings { grid-template-columns: 1fr; } }
+
 /* ---------- login ---------- */
 .login { min-height: 100vh; display: grid; grid-template-columns: 1.1fr 1fr; }
 .login-art { position: relative; background: var(--accent); color: #fff; padding: 40px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }

@@ -24,6 +24,7 @@
       <a href="#automacoes">Automações</a>
       <a href="#historico">Histórico</a>
       <a href="#conta">Conta</a>
+      <a href="#configuracoes">Configurações</a>
     </nav>
     <div id="nav-account"></div>
   </div>
@@ -109,6 +110,41 @@
         </div>
       </div>
       <div class="list" id="events"></div>
+    </section>
+  </div>
+
+  <div class="wrap">
+    <section class="section" id="configuracoes">
+      <div class="section-head">
+        <h2><span class="n">Configurações</span>App da Meta</h2>
+      </div>
+      <div class="settings">
+        <form class="panel" id="meta-form" novalidate>
+          <h3>Credenciais</h3>
+          <p class="hint">Meta App Dashboard › Instagram › <b>API setup with Instagram login</b>.</p>
+          <label class="field"><span>Instagram App ID</span><input class="input" name="igAppId" inputmode="numeric" autocomplete="off"></label>
+          <label class="field"><span>Instagram App Secret <em id="secret-state"></em></span><input class="input" name="igAppSecret" type="password" autocomplete="new-password"></label>
+          <label class="field"><span>Verify token do webhook <em>gerado automaticamente</em></span><input class="input" name="webhookVerifyToken" autocomplete="off" spellcheck="false"></label>
+          <button class="btn accent" type="submit" id="meta-save">Salvar</button>
+        </form>
+
+        <div class="panel">
+          <h3>URLs para colar na Meta</h3>
+          <label class="field"><span>Callback URL do webhook <em>assine o campo comments</em></span><input class="input copy" id="url-webhook" readonly></label>
+          <label class="field"><span>OAuth redirect URI <em>Business login settings</em></span><input class="input copy" id="url-callback" readonly></label>
+          <label class="field"><span>Política de privacidade</span><input class="input copy" id="url-privacy" readonly></label>
+
+          <form id="pw-form" novalidate>
+            <h3>Senha do painel</h3>
+            <p class="hint hidden" id="pw-locked">Definida em ADMIN_PASSWORD no servidor.</p>
+            <div id="pw-fields">
+              <label class="field"><span>Senha atual</span><input class="input" name="current" type="password" autocomplete="current-password"></label>
+              <label class="field"><span>Nova senha <em>mínimo 10 caracteres</em></span><input class="input" name="password" type="password" autocomplete="new-password" minlength="10"></label>
+              <button class="btn" type="submit" id="pw-save">Trocar senha</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </section>
   </div>
 </main>

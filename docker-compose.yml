@@ -5,8 +5,11 @@ services:
     build: .
     image: linka-direct:latest
     restart: unless-stopped
-    env_file: .env
+    env_file:
+      - path: .env
+        required: false   # opcional: credenciais e senha podem ser definidas pelo painel
     environment:
+      APP_BASE_URL: ${APP_BASE_URL:-https://directflow.codeshot.com.br}
       DB_PATH: /app/data/app.db
       TRUST_PROXY: "1"
     volumes:

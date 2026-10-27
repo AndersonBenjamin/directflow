@@ -1,9 +1,12 @@
-// Configuração central. Tudo vem de variáveis de ambiente (.env em dev).
+// Configuração central. Vem de variáveis de ambiente (.env em dev). Credenciais da Meta e senha
+// do painel são opcionais aqui: se ausentes, são definidas pelo painel (src/settings.js).
 function required(name) {
   const v = process.env[name];
   if (!v || !v.trim()) throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
   return v.trim();
 }
+
+const optional = (name) => (process.env[name] || '').trim();
 
 export function loadConfig() {
   const baseUrl = required('APP_BASE_URL').replace(/\/+$/, '');
@@ -14,12 +17,12 @@ export function loadConfig() {
     secureCookies: baseUrl.startsWith('https://'),
 
     // App Dashboard > Instagram > API setup with Instagram login
-    igAppId: required('IG_APP_ID'),
-    igAppSecret: required('IG_APP_SECRET'),
-    webhookVerifyToken: required('WEBHOOK_VERIFY_TOKEN'),
+    igAppId: optional('IG_APP_ID'),
+    igAppSecret: optional('IG_APP_SECRET'),
+    webhookVerifyToken: optional('WEBHOOK_VERIFY_TOKEN'),
 
-    adminPassword: required('ADMIN_PASSWORD'),
-    encryptionKey: required('ENCRYPTION_KEY'),
+    adminPassword: optional('ADMIN_PASSWORD'),
+    encryptionKey: optional('ENCRYPTION_KEY'),
 
     graphVersion: process.env.GRAPH_API_VERSION || 'v26.0',
     graphBase: (process.env.GRAPH_BASE_URL || 'https://graph.instagram.com').replace(/\/+$/, ''),

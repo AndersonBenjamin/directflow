@@ -4,16 +4,19 @@ import { makeGraph } from './graph.js';
 import { makeCipher } from './security.js';
 import { makeWorker, refreshTokens } from './automation.js';
 import { createServer } from './server.js';
+import { makeSettings, resolveEncryptionKey } from './settings.js';
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
 export function start(overrides = {}) {
   const cfg = { ...loadConfig(), ...overrides };
+  cfg.encryptionKey = resolveEncryptionKey(cfg);
   const repo = openDb(cfg.dbPath);
   const graph = makeGraph(cfg);
   const cipher = makeCipher(cfg.encryptionKey);
+  const settings = makeSettings({ cfg, repo, cipher });
   const worker = makeWorker({ repo, graph, cipher, cfg, log });
-  const server = createServer({ cfg, repo, graph, cipher, worker, log });
+  const server = createServer({ cfg, repo, graph, cipher, settings, worker, log });
 
   repo.resetStuckSending();
   const timers = [
@@ -26,8 +29,10 @@ export function start(overrides = {}) {
   return new Promise((resolve) => {
     server.listen(cfg.port, () => {
       log(`rodando em ${cfg.baseUrl} (porta ${cfg.port}) · Graph API ${cfg.graphVersion}`);
+      if (settings.setupCode) log(`primeiro acesso: abra ${cfg.baseUrl} e use o código ${settings.setupCode} para criar a senha do painel`);
+      else if (!settings.metaReady()) log('credenciais da Meta pendentes: preencha em Configurações, no painel');
       resolve({
-        server, repo, cfg, worker,
+        server, repo, cfg, worker, settings,
         close: () => new Promise((r) => { timers.forEach(clearInterval); server.close(() => { repo.raw.close(); r(); }); }),
       });
     });

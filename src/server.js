@@ -21,8 +21,9 @@ const SECURITY_HEADERS = {
 
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
 
-export function createServer({ cfg, repo, graph, cipher, worker, log = console.log }) {
-  const signer = makeSigner(cfg.encryptionKey + cfg.adminPassword);
+export function createServer({ cfg, repo, graph, cipher, settings, worker, log = console.log }) {
+  // Recriado a cada uso porque a senha (parte do segredo) pode mudar pelo painel.
+  const signer = () => makeSigner(settings.signerSecret());
   const loginLimiter = makeRateLimiter({ max: 10, windowMs: 15 * 60_000 });
 
   // ---------- helpers ----------
@@ -43,13 +44,26 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
     if (!String(req.headers['content-type'] || '').includes('application/json')) throw new HttpError(415, 'Use application/json');
     try { return JSON.parse((await readBody(req)).toString('utf8') || '{}'); } catch { throw new HttpError(400, 'JSON inválido'); }
   };
-  const session = (req) => signer.verify(parseCookies(req.headers.cookie).sid);
+  const session = (req) => signer().verify(parseCookies(req.headers.cookie).sid);
   const requireSession = (req) => { if (!session(req)) throw new HttpError(401, 'Faça login'); };
   // Proteção CSRF: além de SameSite=Lax, toda mutação precisa vir da mesma origem.
   const sameOrigin = (req) => {
     const o = req.headers.origin;
     if (!o) return true;
     return o === new URL(cfg.baseUrl).origin || o === `http://${req.headers.host}` || o === `https://${req.headers.host}`;
+  };
+  const clientIp = (req) => {
+    // Atrás do proxy reverso (Nginx), o IP real vem no X-Forwarded-For.
+    const fwd = cfg.trustProxy && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    return fwd || req.socket.remoteAddress || '?';
+  };
+  const startSession = (res) => {
+    const sid = signer().sign({ exp: Date.now() + SESSION_TTL, n: crypto.randomUUID() });
+    return send(res, 200, { ok: true }, { 'Set-Cookie': cookie('sid', sid, { maxAge: SESSION_TTL / 1000, secure: cfg.secureCookies }) });
+  };
+  const validPassword = (p) => {
+    if (typeof p !== 'string' || p.length < 10 || p.length > 200) throw new HttpError(400, 'A senha precisa ter de 10 a 200 caracteres');
+    return p;
   };
   const currentAccount = () => repo.primaryAccount();
   const requireAccount = () => { const a = currentAccount(); if (!a) throw new HttpError(409, 'Conecte uma conta do Instagram primeiro'); return a; };
@@ -89,12 +103,13 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
     if (pathname === '/webhook' && m === 'GET') {
       const mode = url.searchParams.get('hub.mode');
       const token = url.searchParams.get('hub.verify_token');
-      if (mode === 'subscribe' && token && safeEqual(token, cfg.webhookVerifyToken)) {
+      if (mode === 'subscribe' && token && cfg.webhookVerifyToken && safeEqual(token, cfg.webhookVerifyToken)) {
         return send(res, 200, url.searchParams.get('hub.challenge') || '', { 'Content-Type': 'text/plain' });
       }
       return send(res, 403, 'forbidden', { 'Content-Type': 'text/plain' });
     }
     if (pathname === '/webhook' && m === 'POST') {
+      if (!cfg.igAppSecret) return send(res, 503, { error: 'App Secret não configurado' });
       const raw = await readBody(req);
       if (!verifyMetaSignature(raw, req.headers['x-hub-signature-256'], cfg.igAppSecret)) {
         log('webhook rejeitado: assinatura inválida');
@@ -108,15 +123,24 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
     }
 
     // ===== Login do painel =====
+    if (pathname === '/api/setup' && m === 'GET') return send(res, 200, { needsSetup: settings.needsSetup() });
+    if (pathname === '/api/setup' && m === 'POST') {
+      // Primeiro acesso: cria a senha do painel com o código impresso no log do servidor.
+      if (!settings.needsSetup()) throw new HttpError(409, 'A senha já foi criada');
+      if (!sameOrigin(req)) throw new HttpError(403, 'Origem não permitida');
+      if (!loginLimiter(clientIp(req))) throw new HttpError(429, 'Muitas tentativas. Aguarde 15 minutos.');
+      const { code, password } = await readJson(req);
+      if (!settings.checkSetupCode(code)) throw new HttpError(401, 'Código de configuração incorreto');
+      settings.setPassword(validPassword(password));
+      log('senha do painel criada');
+      return startSession(res);
+    }
     if (pathname === '/api/login' && m === 'POST') {
-      // Atrás do proxy reverso (Nginx), o IP real vem no X-Forwarded-For.
-      const fwd = cfg.trustProxy && String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
-      const ip = fwd || req.socket.remoteAddress || '?';
-      if (!loginLimiter(ip)) throw new HttpError(429, 'Muitas tentativas. Aguarde 15 minutos.');
+      if (!loginLimiter(clientIp(req))) throw new HttpError(429, 'Muitas tentativas. Aguarde 15 minutos.');
+      if (settings.needsSetup()) throw new HttpError(409, 'Crie a senha do painel primeiro');
       const { password } = await readJson(req);
-      if (!password || !safeEqual(password, cfg.adminPassword)) throw new HttpError(401, 'Senha incorreta');
-      const sid = signer.sign({ exp: Date.now() + SESSION_TTL, n: crypto.randomUUID() });
-      return send(res, 200, { ok: true }, { 'Set-Cookie': cookie('sid', sid, { maxAge: SESSION_TTL / 1000, secure: cfg.secureCookies }) });
+      if (!password || !settings.checkPassword(password)) throw new HttpError(401, 'Senha incorreta');
+      return startSession(res);
     }
     if (pathname === '/api/logout' && m === 'POST') {
       return send(res, 200, { ok: true }, { 'Set-Cookie': cookie('sid', '', { maxAge: 0, secure: cfg.secureCookies }) });
@@ -125,15 +149,16 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
     // ===== OAuth: Business Login for Instagram =====
     if (pathname === '/auth/instagram/start' && m === 'GET') {
       if (!session(req)) return redirect(res, '/login.html');
+      if (!settings.metaReady()) return redirect(res, '/?erro=' + encodeURIComponent('Preencha o App ID e o App Secret da Meta em Configurações'));
       const state = crypto.randomBytes(24).toString('base64url');
       return redirect(res, graph.authorizeUrl(state), {
-        'Set-Cookie': cookie('oauth_state', signer.sign({ state, exp: Date.now() + 10 * 60_000 }), { maxAge: 600, secure: cfg.secureCookies }),
+        'Set-Cookie': cookie('oauth_state', signer().sign({ state, exp: Date.now() + 10 * 60_000 }), { maxAge: 600, secure: cfg.secureCookies }),
       });
     }
     if (pathname === '/auth/instagram/callback' && m === 'GET') {
       if (!session(req)) return redirect(res, '/login.html');
       const clear = cookie('oauth_state', '', { maxAge: 0, secure: cfg.secureCookies });
-      const saved = signer.verify(parseCookies(req.headers.cookie).oauth_state);
+      const saved = signer().verify(parseCookies(req.headers.cookie).oauth_state);
       const state = url.searchParams.get('state');
       if (url.searchParams.get('error')) return redirect(res, `/?erro=${encodeURIComponent(url.searchParams.get('error_description') || 'Login cancelado')}`, { 'Set-Cookie': clear });
       if (!saved || !state || !safeEqual(saved.state, state)) return redirect(res, '/?erro=' + encodeURIComponent('Sessão de login expirada, tente de novo'), { 'Set-Cookie': clear });
@@ -162,7 +187,28 @@ export function createServer({ cfg, repo, graph, cipher, worker, log = console.l
       requireSession(req);
       if (m !== 'GET' && !sameOrigin(req)) throw new HttpError(403, 'Origem não permitida');
 
-      if (pathname === '/api/me' && m === 'GET') return send(res, 200, { account: publicAccount(currentAccount()) });
+      if (pathname === '/api/me' && m === 'GET') return send(res, 200, { account: publicAccount(currentAccount()), metaReady: settings.metaReady() });
+
+      if (pathname === '/api/settings' && m === 'GET') return send(res, 200, settings.view());
+      if (pathname === '/api/settings' && m === 'PUT') {
+        const d = await readJson(req);
+        const str = (v, max) => (v === undefined ? undefined : String(v).trim().slice(0, max));
+        const igAppId = str(d.igAppId, 40);
+        if (igAppId && !/^\d+$/.test(igAppId)) throw new HttpError(400, 'O App ID tem só números');
+        const webhookVerifyToken = str(d.webhookVerifyToken, 200);
+        if (webhookVerifyToken !== undefined && !/^\S{8,}$/.test(webhookVerifyToken)) throw new HttpError(400, 'O Verify token precisa ter ao menos 8 caracteres, sem espaços');
+        settings.update({ igAppId, igAppSecret: str(d.igAppSecret, 200), webhookVerifyToken });
+        log('configurações da Meta atualizadas pelo painel');
+        return send(res, 200, settings.view());
+      }
+      if (pathname === '/api/password' && m === 'POST') {
+        if (settings.passwordLocked()) throw new HttpError(409, 'A senha está definida em ADMIN_PASSWORD no servidor');
+        if (!loginLimiter(clientIp(req))) throw new HttpError(429, 'Muitas tentativas. Aguarde 15 minutos.');
+        const { current, password } = await readJson(req);
+        if (!current || !settings.checkPassword(current)) throw new HttpError(400, 'Senha atual incorreta'); // 401 deslogaria o painel
+        settings.setPassword(validPassword(password));
+        return startSession(res); // a sessão antiga deixa de valer com a senha nova
+      }
 
       if (pathname === '/api/account' && m === 'DELETE') {
         const a = requireAccount();

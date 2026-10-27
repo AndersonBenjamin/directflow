@@ -175,3 +175,52 @@ test('pausar automação para de enviar', async () => {
   const stats = await call('/api/stats');
   assert.equal(stats.data.totals.sent, 2);
 });
+
+test('sem variáveis: senha e credenciais da Meta pelo painel', async () => {
+  const { start } = await import('../src/index.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'linka-'));
+  const port = APP_PORT + 2;
+  const app2 = await start({ port, dbPath: path.join(dir, 'app.db'), igAppId: '', igAppSecret: '', webhookVerifyToken: '', adminPassword: '', encryptionKey: '' });
+  const url = `http://127.0.0.1:${port}`;
+  let sid = '';
+  const req = async (p, { method = 'GET', body } = {}) => {
+    const res = await fetch(url + p, { method, redirect: 'manual', headers: { 'Content-Type': 'application/json', Cookie: sid }, body: body && JSON.stringify(body) });
+    const c = res.headers.getSetCookie().find((x) => x.startsWith('sid='));
+    if (c) sid = c.split(';')[0];
+    return { status: res.status, data: await res.json().catch(() => null), location: res.headers.get('location') };
+  };
+  try {
+    assert.ok(fs.existsSync(path.join(dir, 'secret.key')), 'chave gerada ao lado do banco');
+    assert.equal((await req('/api/setup')).data.needsSetup, true);
+    assert.equal((await req('/api/login', { method: 'POST', body: { password: 'qualquer-coisa' } })).status, 409);
+    assert.equal((await req('/api/setup', { method: 'POST', body: { code: 'ERRADO', password: 'senha-nova-123' } })).status, 401);
+    assert.equal((await req('/api/setup', { method: 'POST', body: { code: app2.settings.setupCode, password: 'curta' } })).status, 400);
+    assert.equal((await req('/api/setup', { method: 'POST', body: { code: app2.settings.setupCode.toLowerCase(), password: 'senha-nova-123' } })).status, 200);
+    assert.equal((await req('/api/setup', { method: 'POST', body: { code: app2.settings.setupCode, password: 'outra-senha-123' } })).status, 409);
+
+    assert.equal((await req('/api/me')).data.metaReady, false);
+    assert.equal((await fetch(`${url}/webhook`, { method: 'POST', body: '{}' })).status, 503);
+    assert.match((await req('/auth/instagram/start')).location, /erro=/);
+
+    const s = (await req('/api/settings')).data;
+    assert.ok(s.webhookVerifyToken.length >= 8, 'verify token gerado');
+    assert.equal(s.urls.webhook, `${base}/webhook`);
+    assert.equal((await req('/api/settings', { method: 'PUT', body: { igAppId: 'abc' } })).status, 400);
+    const saved = (await req('/api/settings', { method: 'PUT', body: { igAppId: '555', igAppSecret: 'segredo-do-painel' } })).data;
+    assert.equal(saved.igAppSecretSet, true);
+    assert.equal(saved.igAppSecret, undefined, 'secret não volta para o painel');
+    assert.ok(!app2.repo.getSetting('ig_app_secret').includes('segredo'), 'secret criptografado no banco');
+    assert.equal((await req('/api/me')).data.metaReady, true);
+    assert.equal((await req('/api/settings', { method: 'PUT', body: { igAppSecret: '' } })).data.igAppSecretSet, true, 'vazio mantém o secret');
+    const v = await fetch(`${url}/webhook?hub.mode=subscribe&hub.verify_token=${s.webhookVerifyToken}&hub.challenge=7`);
+    assert.equal(await v.text(), '7');
+
+    const oldSid = sid;
+    assert.equal((await req('/api/password', { method: 'POST', body: { current: 'errada', password: 'senha-trocada-123' } })).status, 400);
+    assert.equal((await req('/api/password', { method: 'POST', body: { current: 'senha-nova-123', password: 'senha-trocada-123' } })).status, 200);
+    assert.equal((await req('/api/me')).status, 200, 'nova sessão vale');
+    sid = oldSid;
+    assert.equal((await req('/api/me')).status, 401, 'sessão antiga cai ao trocar a senha');
+    assert.equal((await req('/api/login', { method: 'POST', body: { password: 'senha-trocada-123' } })).status, 200);
+  } finally { await app2.close(); }
+});
