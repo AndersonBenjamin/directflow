@@ -7,3 +7,4 @@ docs
 *.zip
 *.db
 *.db-*
+*.tar.gz

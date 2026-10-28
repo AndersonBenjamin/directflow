@@ -29,6 +29,7 @@ export function start(overrides = {}) {
   return new Promise((resolve) => {
     server.listen(cfg.port, () => {
       log(`rodando em ${cfg.baseUrl} (porta ${cfg.port}) · Graph API ${cfg.graphVersion}`);
+      if (/seudominio/i.test(cfg.baseUrl)) log(`ATENÇÃO: APP_BASE_URL ainda é o endereço de exemplo (${cfg.baseUrl}). Corrija no .env.`);
       if (settings.setupCode) log(`primeiro acesso: abra ${cfg.baseUrl} e use o código ${settings.setupCode} para criar a senha do painel`);
       else if (!settings.metaReady()) log('credenciais da Meta pendentes: preencha em Configurações, no painel');
       resolve({

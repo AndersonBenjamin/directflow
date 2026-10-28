@@ -338,6 +338,16 @@ function renderSettings(s) {
   $('#url-webhook').value = s.urls.webhook;
   $('#url-callback').value = s.urls.callback;
   $('#url-privacy').value = s.urls.privacy;
+  // Avisa quando APP_BASE_URL (do servidor) não é o endereço aberto no navegador:
+  // com URL errada, o login do Instagram e o webhook não funcionam.
+  const configured = (() => { try { return new URL(s.urls.webhook).origin; } catch { return ''; } })();
+  const warn = $('#url-warning');
+  warn.classList.toggle('hidden', configured === location.origin);
+  if (configured !== location.origin) {
+    $('#url-warning-text').textContent =
+      `O servidor está configurado com ${configured}, mas você está acessando ${location.origin}. ` +
+      `Corrija APP_BASE_URL no .env da VPS para ${location.origin} e rode "docker compose up -d" antes de colar estas URLs na Meta.`;
+  }
   $('#pw-locked').classList.toggle('hidden', !s.locked.password);
   $('#pw-fields').classList.toggle('hidden', s.locked.password);
 }

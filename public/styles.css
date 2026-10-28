@@ -262,3 +262,4 @@ textarea.input { height: 110px; padding: 10px 12px; resize: vertical; }
   .ev-text { max-width: none; white-space: normal; }
   .media-grid { grid-template-columns: repeat(3, 1fr); }
 }
+#url-warning { margin: 0 0 16px; line-height: 1.4; }
